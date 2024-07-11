@@ -1,0 +1,357 @@
+﻿@model GenericApp.RadiumRCMAudit.Main.Models.ExtractViewModel
+@using GenericApp.RadiumRCMAudit.Main.HtmlHelpers
+
+@{
+    ViewBag.Title = "Radium RCM Upload Detail";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}    
+
+
+<div class="main-box">
+
+    <div class="main-box-body clearfix">
+
+        <header class="main-box-header clearfix">
+
+            <div class="row">
+                <div class="form-group pull-left">
+                    <ul class="list-inline">
+                        <li><h1 class="pull-left">Radium Upload Detail</h1></li>
+                    </ul>
+                </div>
+
+                <div class="form-group pull-left hidden-print" style="padding-left:50px">
+                    <ul class="list-inline ">
+                        <li><button id="addNewExtract" type="button" class="btn btn-info btn-sm">Add New Upload</button></li>
+                    </ul>
+                </div>
+
+
+                <div class="form-group pull-right hidden-print" style="padding-left:50px">
+                    <ul class="list-inline ">                        
+                        <li>@Html.ActionLink("Back to Uploads", "ManageUploads", new { @uploadId = Model.ExtractId }, new { @class = "btn-link" })</li>
+                        <li><button id="customPrint" type="button" class="btn-link">Print Page</button></li>
+                        <li><button id="customCopy" type="button" class="btn-link">Copy Page to Clipboard</button></li>
+                        <li>@Html.ActionLink("Export Upload Data to CSV", "ExportUploadData", new { @uploadId = Model.ExtractId, @uploadName = Model.Name }, new { @class = "btn-link" })</li>                        
+                    </ul>
+                </div>
+
+            </div>    
+
+        </header>        
+
+        @Html.HiddenFor(m => m.ExtractId)
+        @Html.HiddenFor(m => m.Name)                
+
+        <h3>Items in Upload: @Html.Label(Model.Name)</h3>
+
+        @*<div class="table-responsive">*@
+        <div class="container">        
+            
+            <table class="table table-bordered table-hover" id="datatabItems">
+                <thead>
+                    <tr>
+                        <th>
+                            Internal Id
+                        </th>
+                        <th>
+                            User Name
+                        </th>
+                        <th>
+                            Last Name
+                        </th>
+                        <th>
+                            First Name
+                        </th>
+                        <th>
+                            Employee ID
+                        </th>
+                        <th>
+                            Security Group
+                        </th>
+                    </tr>
+                </thead>
+
+                <tbody></tbody>
+
+                <tfoot>
+                </tfoot>
+
+            </table>
+
+        </div>
+
+        <footer>            
+        </footer>
+
+    </div>
+
+</div>
+
+@section Scripts
+    {
+    <script type="text/javascript">
+
+        $(document).ready(function () {
+
+            var oTableItems;                                    
+
+            $('#datatabItems tfoot th').each(function () {
+                $(this).html('<input type="text" />');
+            });
+
+            oTableItems = $('#datatabItems').DataTable({
+                "processing": true,
+                "pageLength": 50,       //default page size
+                "dom": '<"top"flp<"clear">>rt<"bottom"ifp<"clear">B>',
+                "lengthMenu": [[10, 25, 50, 100, 99999999], [10, 25, 50, 100, "All"]],
+                "searching": false,    //hides the search filter
+                "serverSide": true,
+
+                "buttons": [
+                    'copy',
+                {
+                    extend: 'print',
+                  
+                    customize: function (win) {
+                        $(win.document.body)
+                            .css('font-size', '10pt');
+
+                        $(win.document.body).find('table')
+                            .addClass('compact')
+                            .css('font-size', 'inherit');
+                    }
+                }
+                ],
+
+                "ajax": {
+                    "type": "POST",
+                    "url": '@Url.Action("LoadUploadItemsJS", "Uploads")',
+                    "contentType": 'application/json; charset=utf-8',
+                    //"data": buildSearchData
+                    "data": function (data)
+                    {
+                        data.PrimaryId = $("#ExtractId").val();
+                        return data = JSON.stringify(data);
+                    }
+                },
+                "columns": [
+                    { "data": "ExtractItemId" },
+                    { "data": "UserName" },
+                    { "data": "LastName" },
+                    { "data": "FirstName" },
+                    { "data": "EmployeeID" },
+                    { "data": "SecurityGroup" }
+                ],
+
+                "order": [1, "asc"]
+            });
+
+            oTableItems.buttons().container().hide();    //hide the darn print button so I can add my own
+
+            $("#customPrint").click(function () {
+                $(".buttons-print").trigger("click");
+            });
+
+            $("#customCopy").click(function () {
+                $(".buttons-copy").trigger("click");
+            });
+
+            $(document).on('click', "[id^='btnEditExtract']", function (e) {
+                e.stopImmediatePropagation();
+
+                //$("#lookupContent").hide();
+                $("#dlgTitle").html('Edit Radium RCM Upload');
+                $("#dlgEditExtract").show();
+
+                progressStart();
+
+                var lst = this.id.split("_");
+                var extractId = lst[1];
+                
+                $('#uploadUI').hide();
+                $('#saveAndUploadExtract').hide();
+                $('#saveExtract').show();
+
+                $.ajax({
+                    type: "POST",
+                    cache: false,
+                    url: '@Url.Action("EditUploadJS", "Uploads")',
+                    dataType: 'json',
+                    data: { 'extractId': extractId },
+                    success: function (data) {
+                        //REVISIT: deserialization
+                        $("#ExtractId").val(extractId);
+                        $("#Name").val(data.Name);
+                        $("#NameSave").val(data.Name);
+
+                        progressClear();
+                    },
+                    error: function (xhr, ajaxOptions, error) {
+                        progressFail(getAjaxErrorText(xhr));
+                    }
+                });
+
+                $("#deleteExtract").show();
+                $('#dlgEditExtract').modal('show');
+            });
+
+            $(document).on('click', "[id^='btnShowItems']", function (e) {
+                e.stopImmediatePropagation();
+
+                var lst = this.id.split("_");
+                //var extractId = lst[1];
+                $("#ExtractId").val(lst[1]);
+                //$("#extractName").val($("#Name").val());  //REVISIT
+
+                oTableItems.ajax.reload();
+            });
+
+            $("#saveExtract").click(function () {
+                //$("#lookupContent").hide();
+
+                if ($('#editExtractForm').valid()) {
+                    progressStart();
+
+                    $.ajax({
+                        type: "POST",
+                        cache: false,
+                        url: '@Url.Action("SaveUploadJS", "Uploads")',
+                        dataType: 'json',
+                        data: $('#editExtractForm').serialize(),
+                        success: function (data) {
+                            if (data.Success) {                                
+                                progressSuccess();
+                                oTableExtracts.ajax.reload();
+                            }
+                            else {
+                                progressFail(data.Message);
+                            }
+                        },
+                        error: function (xhr, ajaxOptions, error) {
+                            //progressFail($.parseJSON(xhr.responseText));
+                            progressFail(getAjaxErrorText(xhr));
+                        }
+                    });
+                }
+            });
+
+            $("#saveAndUploadExtract").click(function () {
+                //$("#lookupContent").hide();
+
+                if ($('#editExtractForm').valid()) {
+                    uploadExtract();                    
+                }
+            });
+
+            function uploadExtract()
+            {
+                progressStart();
+
+                var totalFiles = document.getElementById("extractFile").files.length
+                var extractID = $("#ExtractId").val();
+
+                if (totalFiles == 1) {                    
+                    //$("#divUploading").show();    //REVISIT
+                    var formData = new FormData();
+                    var file = document.getElementById("extractFile").files[0];
+
+                    //if ((file.size / 1024) > 200) // 200 KB     //REVISIT: Correct validation for attachments?
+                    //{
+                    //  alert("Attachment " + file.name + " exceed 200 KB!");
+                    //return;
+                    //}
+
+                    formData.append("extractFileJS", file);                    
+                    formData.append("extractNameJS", $("#Name").val());
+                    //formData.append("extractIdJS", $("#ExtractId").val());
+
+                    $.ajax({
+                        timeout: 1200000, //20 minutes
+                        type: "POST",
+                        url: '@Url.Action("SaveAndUploadDataJS", "Uploads")',
+                        data: formData,
+                        dataType: 'json',
+                        contentType: false,
+                        processData: false,
+                        success: function (data) {
+                            if (data.Success) {
+                                progressSuccess();
+                                alert("The Radium data has been saved and uploaded.");
+                                $("#extractName").val($("#Name").val());
+                                $("#ExtractId").val(data.Id);   //so items grid knows which extract
+                                oTableExtracts.ajax.reload();
+                                oTableItems.ajax.reload();
+                                $('#dlgEditExtract').modal('hide');
+                            }
+                            else {
+                                progressFail(data.Message);
+                            }
+                        },
+                        error: function (xhr, ajaxOptions, error) {
+                            progressFail(getAjaxErrorText(xhr));
+                        }
+                    });
+
+                    file = null;
+                    totalFiles = null;
+                    formData = null;
+                }
+                else {
+                    progressFail('No files were selected');
+                }
+            }            
+
+            $("#addNewExtract").click(function () {
+                progressClear();
+                //$("#lookupContent").hide();
+                $("#ExtractId").val(0);
+                $("#Name").val(defaultExtractName());
+                $("#NameSave").val('');
+                $("#dlgTitle").html("Add Radium RCM Upload");
+                $("#deleteExtract").hide();
+                //$("#ExtractIdUse").val(0);
+                $('#uploadUI').show();
+                $('#saveAndUploadExtract').show();
+                $('#saveExtract').hide();
+                $("#extractFile").replaceWith($("#extractFile").clone());
+                $('#dlgEditExtract').modal('show');
+            });
+
+            $("#deleteExtract").click(function () {
+                if (confirm("Delete this extract?")) {
+                    progressStart();
+
+                    $.ajax({
+                        type: "POST",
+                        cache: false,
+                        url: '@Url.Action("DeleteUploadJS", "Uploads")',
+                        dataType: 'json',
+                        data: $('#editExtractForm').serialize(),
+                        success: function (data) {
+                            if (data.Success)
+                            {
+                                progressSuccess();
+                                alert("The upload has been deleted.");
+                                oTableExtracts.ajax.reload();
+                                oTableItems.ajax.reload();
+                                $('#dlgEditExtract').modal('hide');
+                            }
+                            else
+                            {
+                                progressFail(data.Message);
+                            }
+                        },
+                        error: function (xhr, ajaxOptions, error) {
+                            progressFail(getAjaxErrorText(xhr)); //REVISIT: show more detail?
+                            //progressFail(JSON.parse(JSON.stringify(xhr.responseText)));
+                        }
+                    });
+                }
+            });            
+
+            showRequired();
+        });
+
+    </script>
+}

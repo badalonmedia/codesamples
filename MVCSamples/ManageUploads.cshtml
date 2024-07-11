@@ -1,0 +1,588 @@
+﻿@model GenericApp.RadiumRCMAudit.Main.Models.ExtractViewModel
+@using GenericApp.RadiumRCMAudit.Main.HtmlHelpers
+
+@{
+    ViewBag.Title = "Manage Radium RCM Uploads";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}    
+
+<!--Extract Edit Dialog -->
+<div tabindex="-1" class="modal fade" id="dlgEditExtract" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button class="close" aria-hidden="true" type="button" data-dismiss="modal">×</button>
+                <h4 class="modal-title" id="dlgTitle">Radium RCM Upload</h4>
+            </div>
+            <div class="modal-body" style="padding:10px 25px;">
+
+                @using (Html.BeginForm("ManageUploads", "Radium", FormMethod.Post, new { id = "editExtractForm", role = "form", @class = "form-horizontal" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.ValidationSummary("", new { @class = "text-danger" })
+
+                    @Html.HiddenFor(m => m.ExtractId)
+                    @*@Html.HiddenFor(m => m.ExtractIdUse)*@
+                    @*@Html.HiddenFor(m => m.Name)*@
+                    @Html.HiddenFor(m => m.NameSave)
+                    @Html.HiddenFor(m => m.InternalUserId)
+
+                    <div class="form-group">
+
+                        @Html.LabelFor(m => m.Name, new { @class = "col-md-2 control-label" })
+                        <div class="col-md-7">
+                            @Html.TextBoxFor(m => m.Name, new { type = "text", @class = "form-control", placeholder = "Upload Name" })
+                        </div>
+
+                        <div class="col-md-3">
+                            @*<button id="lookupExtract" type="button" class="btn btn-info btn-sm">Lookup</button>
+
+                            <div id="lookupContent">
+                            </div>*@
+                        </div>
+
+                    </div>
+
+                    <div class="form-group" id="uploadUI">
+                        <div class="col-md-12">
+                          Please specify the Radium extract CSV file to be uploaded...
+                        </div>
+                    </div>
+
+
+                    <div class="form-group" id="uploadUI">
+                        <div class="col-md-12">
+                            <input type="file"  id="extractFile" name="extractFile" placeholder="Select Radium RCM upload file" onchange="handleFileChange()" accept="csv"/>
+                        </div>                        
+                    </div>
+
+                    <div class="form-group" id="uploadUI2">
+                        <div class="col-md-12">
+                            <span id="uploadFileName" />
+                        </div>
+                    </div>
+
+
+                    <div class="form-group" style="border-bottom:1px solid lightgrey">
+                        <div class="col-md-12">
+                        </div>
+                    </div>
+
+                                    <div class="form-group">
+                                        <div class="col-md-4 pull-left">
+                                            <button id="saveExtract" type="button" class="btn btn-default">Save</button>
+                                            <button id="saveAndUploadExtract" type="button" class="btn btn-default">Save & Upload</button>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <button id="deleteExtract" type="button" class="btn btn-danger">Delete Upload</button>
+                                        </div>
+                                        <div class="col-md-4 pull-right">
+                                            <button id="closeDlg" type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                                        </div>
+                                    </div>
+                }
+
+            </div>
+
+            <div class="modal-footer">
+                <div class="pull-left" id="progressIndicator">
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!--end PopUp -->
+
+<div class="main-box">
+
+    <div class="main-box-body clearfix">
+
+        <header class="main-box-header clearfix">
+
+            <div class="row">
+                <div class="form-group pull-left">
+                    <ul class="list-inline">
+                        <li><h1 class="pull-left">Radium Uploads</h1></li>
+                    </ul>
+                </div>
+
+                <div class="form-group pull-left hidden-print" style="padding-left:50px">
+                    <ul class="list-inline ">
+                        <li><button id="addNewExtract" type="button" class="btn btn-info btn-sm">Add New Upload</button></li>
+                    </ul>
+                </div>
+
+
+                <div class="form-group pull-right hidden-print" style="padding-left:50px">
+                    <ul class="list-inline ">
+                        <li>Upload List:</li>
+                        <li><button id="customPrint" type="button" class="btn-link">Print Page</button></li>
+                        <li><button id="customCopy" type="button" class="btn-link">Copy Page to Clipboard</button></li>
+                        <li>@Html.ActionLink("Export All to CSV", "ExportUploads", null, new { @class = "btn-link" })</li>
+                    </ul>
+                </div>
+
+            </div>
+
+        </header>
+
+
+        @*<div class="table-responsive">*@
+        <div class="container">
+            <table class="table table-bordered table-hover" id="datatabExtracts">
+                <thead>
+                    <tr>
+                        <th>
+                            Internal Id
+                        </th>
+                        <th>
+                            Internal User
+                        </th>
+                        <th>
+                            Name
+                        </th>
+                        <th>
+                            Date Added
+                        </th>
+                    </tr>
+                </thead>
+
+                <tbody></tbody>
+
+                <tfoot>
+                </tfoot>
+
+            </table>
+
+            <div id="uploadHeaderDetail" style="display:none">
+                <h3>
+                    Detail For Upload: <span id="uploadNameDetail"></span>
+                    <input type="hidden" id="uploadIdDetail" />
+                    <button id="showDetailOnly" type="button" class="btn btn-info btn-sm">Zoom</button>
+                </h3>
+            </div>
+
+            @*<h3>Detail for Upload: <span id="extractName"></span> </h3>*@
+            <table class="table table-bordered table-hover" id="datatabItems">
+                <thead>
+                    <tr>
+                        <th>
+                            Internal Id
+                        </th>
+                        <th>
+                            User Name
+                        </th>
+                        <th>
+                            Last Name
+                        </th>
+                        <th>
+                            First Name
+                        </th>
+                        <th>
+                            Employee ID
+                        </th>
+                        <th>
+                            Security Group
+                        </th>
+                    </tr>
+                </thead>
+
+                <tbody></tbody>
+
+                <tfoot>
+                </tfoot>
+
+            </table>
+
+        </div>
+
+        <footer>
+        </footer>
+
+    </div>
+
+</div>
+
+@section Scripts
+    {
+    <script type="text/javascript">
+
+        //input=file seems to like this handler outside of document.ready
+        function handleFileChange() {
+            $("#uploadFileName").html($('#extractFile').val());
+
+            if (!stringEndsWith($("#uploadFileName").html(), '.csv'))
+            {
+                alert('Only CSV files are permitted.')
+            }
+        }
+
+        $(document).ready(function () {
+            
+            if ($("#ExtractId").val() != "0")
+            {
+                handleShowItems($("#ExtractId").val())
+            }
+
+            var oTableItems;
+            var oTableExtracts;
+
+            $('#datatabExtracts tfoot th').each(function () {
+                $(this).html('<input type="text" />');
+            });
+
+            oTableExtracts = $('#datatabExtracts').DataTable({
+
+                "createdRow": function (row, data, dataIndex) {
+                    var theData = JSON.parse(JSON.stringify(data));
+                    $('td', row).eq(3).after('<td><button id=\"btnEditExtract_' + theData.ExtractId + '\"  class=\"btn btn-default btn-sm hidden-print\">Edit</button></td>');
+                    $('td', row).eq(3).after('<td><button id=\"btnShowItems_' + theData.ExtractId + '\"  class=\"btn btn-default btn-sm hidden-print\">Detail</button></td>');
+                },
+
+                "processing": true,
+                "pageLength": 10,       //default page size
+                "dom": '<"top"flp<"clear">>rt<"bottom"ifp<"clear">B>',
+                "lengthMenu": [[10, 25, 50, 100, 99999999], [10, 25, 50, 100, "All"]],
+                "searching": false,    //hides the search filter
+                "serverSide": true,
+
+                "buttons": [
+                    'copy',
+                {
+                    extend: 'print',
+                    customize: function (win) {
+                        $(win.document.body)
+                            .css('font-size', '10pt');
+
+                        $(win.document.body).find('table')
+                            .addClass('compact')
+                            .css('font-size', 'inherit');
+                    }
+                }
+                ],
+
+                "ajax": {
+                    "type": "POST",
+                    "url": '@Url.Action("LoadUploadsJS", "Uploads")',
+                    "contentType": 'application/json; charset=utf-8',
+                    'data': function (data) { return data = JSON.stringify(data) }
+                },
+                "columns": [
+                    { "data": "ExtractId" },
+                    { "data": "InternalUserId" },
+                    { "data": "Name" },
+                    { "data": "DateAdded" }
+                ],
+                "columnDefs": [
+                {
+                    "targets": [3],
+                    "searchable": false,
+                    "render": function (netDate) {     //need to compensate for how serialized date comes back from .NET
+                        if (netDate == null)
+                            return null;
+
+                        if (netDate instanceof Date)
+                            return netDate; //its already a date
+
+                        var reg = /\/Date\(([0-9]+)\)\//i
+                        var matches = netDate.match(reg);
+
+                        if (matches.length == 2) {
+                            return new Date(parseInt(matches[1])).toLocaleDateString();
+                        }
+                        else {
+                            return netDate;
+                        }
+                    }
+                }],
+
+                "order": [3, "desc"]
+            });
+
+            oTableExtracts.buttons().container().hide();    //hide the darn print button so I can add my own
+
+            $("#customPrint").click(function () {
+                $(".buttons-print").trigger("click");
+            });
+
+            $("#customCopy").click(function () {
+                $(".buttons-copy").trigger("click");
+            });
+
+            $("#showDetailOnly").click(function () {
+                var actionUrl = '@Url.Action("ShowUploadDetailOnly", "Uploads", new { uploadId = "UPLOADIDPLACEHOLDER" } )';
+                window.location = actionUrl.replace("UPLOADIDPLACEHOLDER", $("#uploadIdDetail").val());
+                return false;
+            });
+            
+
+            $('#datatabItems tfoot th').each(function () {
+                $(this).html('<input type="text" />');
+            });
+
+            oTableItems = $('#datatabItems').DataTable({
+                "processing": true,
+                "pageLength": 10,       //default page size
+                "searching": false,    //hides the search filter
+                "serverSide": true,
+
+                "ajax": {
+                    "type": "POST",
+                    "url": '@Url.Action("LoadUploadItemsJS", "Uploads")',
+                    "contentType": 'application/json; charset=utf-8',
+                    //"data": buildSearchData
+                    "data": function (data)
+                    {
+                        data.PrimaryId = $("#ExtractId").val();
+                        return data = JSON.stringify(data);
+                    }
+                },
+                "columns": [
+                    { "data": "ExtractItemId" },
+                    { "data": "UserName" },
+                    { "data": "LastName" },
+                    { "data": "FirstName" },
+                    { "data": "EmployeeID" },
+                    { "data": "SecurityGroup" }
+                ],
+
+                "order": [1, "asc"]
+            });
+
+            $(document).on('click', "[id^='btnEditExtract']", function (e) {
+                e.stopImmediatePropagation();
+
+                //$("#lookupContent").hide();
+                $("#dlgTitle").html('Edit Radium RCM Upload');
+                $("#dlgEditExtract").show();
+
+                progressStart();
+
+                var lst = this.id.split("_");
+                var extractId = lst[1];
+
+                $('#uploadUI').hide();
+                $('#uploadUI2').hide();
+                $('#saveAndUploadExtract').hide();
+                $('#saveExtract').show();
+
+                $.ajax({
+                    type: "POST",
+                    cache: false,
+                    url: '@Url.Action("EditUploadJS", "Uploads")',
+                    dataType: 'json',
+                    data: { 'extractId': extractId },
+                    success: function (data) {                        
+                        $("#editExtractForm").deserialize(data);
+
+                        //$("#ExtractId").val(extractId);
+                        //$("#Name").val(data.Name);
+                        //$("#NameSave").val(data.Name);
+
+                        progressClear();
+                    },
+                    error: function (xhr, ajaxOptions, error) {
+                        progressFail(getAjaxErrorText(xhr));
+                    }
+                });
+
+                $("#deleteExtract").show();
+                $('#dlgEditExtract').modal('show');
+            });
+
+            function handleShowItems(uploadId)
+            {
+                $.ajax({
+                    type: "POST",
+                    cache: false,
+                    url: '@Url.Action("GetUploadNameJS", "Uploads")',
+                    dataType: 'json',
+                    data: { 'uploadId': uploadId },
+                    success: function (data) {
+                        $("#uploadHeaderDetail").show();
+                        $("#uploadNameDetail").html(data);
+                        $("#uploadIdDetail").val(uploadId);
+                        oTableItems.ajax.reload();
+                    },
+                    error: function (xhr, ajaxOptions, error) {
+                        alert("There was a problem reloading the upload tables.");
+                    }
+                });
+            }
+
+            $(document).on('click', "[id^='btnShowItems']", function (e) {
+                e.stopImmediatePropagation();
+
+                var lst = this.id.split("_");
+                //var extractId = lst[1];
+                var uploadId = lst[1];
+
+                $("#ExtractId").val(lst[1]);
+                //$("#extractName").val($("#Name").val());  //REVISIT
+
+                handleShowItems(uploadId);
+            });
+
+            $("#saveExtract").click(function () {
+                //$("#lookupContent").hide();
+
+                if ($('#editExtractForm').valid()) {
+                    progressStart();
+
+                    $.ajax({
+                        type: "POST",
+                        cache: false,
+                        url: '@Url.Action("SaveUploadJS", "Uploads")',
+                        dataType: 'json',
+                        data: $('#editExtractForm').serialize(),
+                        success: function (data) {
+                            if (data.Success) {
+                                progressSuccess();
+                                oTableExtracts.ajax.reload();
+                            }
+                            else {
+                                progressFail(data.Message);
+                            }
+                        },
+                        error: function (xhr, ajaxOptions, error) {
+                            //progressFail($.parseJSON(xhr.responseText));
+                            progressFail(getAjaxErrorText(xhr));
+                        }
+                    });
+                }
+            });
+
+            $("#saveAndUploadExtract").click(function () {
+                //$("#lookupContent").hide();
+
+                if ($('#editExtractForm').valid()) {
+                    uploadExtract();
+                }
+            });
+
+            function uploadExtract()
+            {
+                progressStart();
+
+                var totalFiles = document.getElementById("extractFile").files.length
+                var extractID = $("#ExtractId").val();
+
+                if (totalFiles == 1) {
+                    var formData = new FormData();
+                    var file = document.getElementById("extractFile").files[0];
+                    var fileName = document.getElementById("extractFile").files[0].name;
+
+                    if (!stringEndsWith(fileName.toLowerCase(), '.CSV'.toLowerCase()))
+                    {
+                        progressFail("File type must be CSV");
+                        file = null;
+                        totalFiles = null;
+                        formData = null;
+                        return;
+                    }
+
+                    if ((file.size / 1024) > 10000) // 10 MB
+                    {
+                        file = null;
+                        totalFiles = null;
+                        formData = null;
+                        alert("Attachment " + file.name + " exceed 10 MB!");
+                        return;
+                    }
+
+                    formData.append("extractFileJS", file);
+                    formData.append("extractNameJS", $("#Name").val());
+                    //formData.append("extractIdJS", $("#ExtractId").val());
+
+                    $.ajax({
+                        timeout: 1200000, //20 minutes
+                        type: "POST",
+                        url: '@Url.Action("SaveAndUploadDataJS", "Uploads")',
+                        data: formData,
+                        dataType: 'json',
+                        contentType: false,
+                        processData: false,
+                        success: function (data) {
+                            if (data.Success) {
+                                progressSuccess();
+                                alert("The Radium data has been saved and uploaded.");
+                                $("#extractName").val($("#Name").val());
+                                $("#ExtractId").val(data.Id);   //so items grid knows which extract
+                                oTableExtracts.ajax.reload();
+                                oTableItems.ajax.reload();
+                                $('#dlgEditExtract').modal('hide');
+                            }
+                            else {
+                                progressFail(data.Message);
+                            }
+                        },
+                        error: function (xhr, ajaxOptions, error) {
+                            progressFail(getAjaxErrorText(xhr));
+                        }
+                    });
+
+                    file = null;
+                    totalFiles = null;
+                    formData = null;
+                }
+                else {
+                    progressFail('No files were selected');
+                }
+            }
+
+            $("#addNewExtract").click(function () {
+                progressClear();
+                //$("#lookupContent").hide();
+                $("#ExtractId").val(0);
+                $("#Name").val(defaultExtractName());
+                $("#NameSave").val('');
+                $("#uploadFileName").html('');
+                $("#dlgTitle").html("Add Radium RCM Upload");
+                $("#deleteExtract").hide();
+                //$("#ExtractIdUse").val(0);
+                $('#uploadUI').show();
+                $('#uploadUI2').show();
+                $('#saveAndUploadExtract').show();
+                $('#saveExtract').hide();
+                $("#extractFile").replaceWith($("#extractFile").clone());
+                $('#dlgEditExtract').modal('show');
+            });
+
+            $("#deleteExtract").click(function () {
+                if (confirm("Delete this extract?")) {
+                    progressStart();
+
+                    $.ajax({
+                        type: "POST",
+                        cache: false,
+                        url: '@Url.Action("DeleteUploadJS", "Uploads")',
+                        dataType: 'json',
+                        data: $('#editExtractForm').serialize(),
+                        success: function (data) {
+                            if (data.Success)
+                            {
+                                progressSuccess();
+                                alert("The upload has been deleted.");
+                                oTableExtracts.ajax.reload();
+                                oTableItems.ajax.reload();
+                                $('#dlgEditExtract').modal('hide');
+                            }
+                            else
+                            {
+                                progressFail(data.Message);
+                            }
+                        },
+                        error: function (xhr, ajaxOptions, error) {
+                            progressFail(getAjaxErrorText(xhr)); //REVISIT: show more detail?
+                            //progressFail(JSON.parse(JSON.stringify(xhr.responseText)));
+                        }
+                    });
+                }
+            });
+
+            showRequired();
+        });
+
+    </script>
+}

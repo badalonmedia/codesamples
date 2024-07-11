@@ -1,0 +1,154 @@
+﻿@model GenericApp.RadiumRCMAudit.Main.Models.AuditViewModel
+@using GenericApp.RadiumRCMAudit.Main.HtmlHelpers
+
+@{
+    ViewBag.Title = "Radium RCM Audit Results";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}    
+
+<div class="main-box">
+
+    <div class="main-box-body clearfix">
+
+        <header class="main-box-header clearfix">
+
+            <div class="row">
+                <div class="form-group pull-left">
+                    <ul class="list-inline">
+                        <li><h1 class="pull-left">Audit Snapshot</h1></li>                        
+                    </ul>
+                </div>                                
+
+                <div class="form-group pull-right hidden-print" style="padding-left:50px">
+                    <ul class="list-inline ">
+                        <li>@Html.ActionLink("Back to Audits", "ManageAudits", new { @auditId = Model.AuditId }, new { @class = "btn-link" })</li>
+                        <li><button id="customPrint" type="button" class="btn-link">Print Page</button></li>
+                        <li><button id="customCopy" type="button" class="btn-link">Copy Page to Clipboard</button></li>                        
+                        <li>@Html.ActionLink("Export All to CSV", "ExportAuditSnapshot", new { @auditId = Model.AuditId, @auditName = Model.Name }, new { @class = "btn-link" })</li>
+                    </ul>
+                </div>
+
+            </div>                
+</header>                
+
+        @Html.HiddenFor(m => m.AuditId)
+        @Html.HiddenFor(m => m.Name)        
+
+        <h3>Database Snapshot for Audit: @Html.Label(Model.Name)</h3>
+
+        @*<div class="table-responsive">*@
+        <div class="container">                    
+            <table class="table table-bordered table-hover" id="datatabMaster">
+                <thead>
+                    <tr>
+                        <th>
+                            Internal Id
+                        </th>
+
+                        <th>
+                            Login
+                        </th>
+                        <th>
+                            Last Name
+                        </th>
+                        <th>
+                            First Name
+                        </th>
+                        <th>
+                            Facilities
+                        </th>
+                        <th>
+                            Templates
+                        </th>
+                    </tr>
+                </thead>
+
+                <tbody></tbody>
+
+                <tfoot>
+                </tfoot>
+
+            </table>
+                
+                </div>                
+
+            @*</div>*@
+
+    </div>
+
+        <footer>            
+        </footer>
+
+    </div>
+
+@*</div>*@
+
+@section Scripts
+    {
+    <script type="text/javascript">
+
+        $(document).ready(function () {
+            var oTableMaster;
+
+            $('#datatabMaster tfoot th').each(function () {
+                $(this).html('<input type="text" />');
+            });
+
+            oTableMaster = $('#datatabMaster').DataTable({
+                "processing": true,
+                "pageLength": 100,       //default page size
+                "dom": '<"top"flp<"clear">>rt<"bottom"ifp<"clear">B>',
+                "lengthMenu": [[10, 25, 50, 100, 99999999], [10, 25, 50, 100, "All"]],
+                "searching": false,    //hides the search filter
+                "serverSide": true,
+
+                "buttons": [
+                    'copy',
+                {
+                    extend: 'print',
+
+                    customize: function (win) {
+                        $(win.document.body)
+                            .css('font-size', '10pt');
+
+                        $(win.document.body).find('table')
+                            .addClass('compact')
+                            .css('font-size', 'inherit');
+                    }
+                }
+                ],
+
+                "ajax": {
+                    "type": "POST",
+                    "url": '@Url.Action("LoadAuditMasterJS", "Audit")',
+                    "contentType": 'application/json; charset=utf-8',
+                    "data": function (data) {
+                        data.PrimaryId = $("#AuditId").val();
+                        return data = JSON.stringify(data);
+                    }
+                },
+                "columns": [
+                    { "data": "AuditMasterItemId" },
+                    { "data": "Login" },
+                    { "data": "LastName" },
+                    { "data": "FirstName" },
+                    { "data": "Facilities" },
+                    { "data": "Templates" }
+                ],
+
+                "order": [1, "asc"]
+            });
+
+            oTableMaster.buttons().container().hide();    //hide the darn print button so I can add my own
+
+            $("#customPrint").click(function () {
+                $(".buttons-print").trigger("click");
+            });
+
+            $("#customCopy").click(function () {
+                $(".buttons-copy").trigger("click");
+            });
+        });
+
+    </script>
+}
